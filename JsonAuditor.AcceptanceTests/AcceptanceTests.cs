@@ -16,17 +16,21 @@ namespace JsonAuditor.AcceptanceTests
         private readonly TestServer _server;
         private readonly HttpClient _client;
 
-        public AcceptanceTests() {
+        public AcceptanceTests()
+        {
             _server = new TestServer(new WebHostBuilder()
                 .UseStartup<Startup>());
             _client = _server.CreateClient();
         }
 
-        public async Task UpdateAndCheckOutput(AuditRequest newRecord) {
-            await _client.PostAsJsonAsync("/Audit", newRecord);
+        public async Task UpdateAndCheckOutput(AuditRequest newRecord)
+        {
+            var postResponse = await _client.PostAsJsonAsync("/Audit", newRecord);
+
+            Assert.True(postResponse.IsSuccessStatusCode);
 
             var response = await _client.GetAsync($"/Audit?entityId={newRecord.EntityId}&entityType={newRecord.EntityType}");
-            
+
             Assert.True(response.IsSuccessStatusCode);
 
             string output = await response.Content.ReadAsStringAsync();
@@ -42,7 +46,8 @@ namespace JsonAuditor.AcceptanceTests
         {
             string entityId = Guid.NewGuid().ToString();
 
-            AuditRequest request = new AuditRequest() {
+            AuditRequest request = new AuditRequest()
+            {
                 UniqueIdentifier = new Guid().ToString(),
                 TransactionDateTime = DateTime.UtcNow,
                 EntityId = entityId,
@@ -52,7 +57,8 @@ namespace JsonAuditor.AcceptanceTests
 
             await UpdateAndCheckOutput(request);
 
-            request = new AuditRequest() {
+            request = new AuditRequest()
+            {
                 UniqueIdentifier = new Guid().ToString(),
                 TransactionDateTime = DateTime.UtcNow,
                 EntityId = entityId,
@@ -68,7 +74,8 @@ namespace JsonAuditor.AcceptanceTests
         {
             string entityId = Guid.NewGuid().ToString();
 
-            AuditRequest request = new AuditRequest() {
+            AuditRequest request = new AuditRequest()
+            {
                 UniqueIdentifier = new Guid().ToString(),
                 TransactionDateTime = DateTime.UtcNow,
                 EntityId = entityId,
@@ -78,7 +85,8 @@ namespace JsonAuditor.AcceptanceTests
 
             await UpdateAndCheckOutput(request);
 
-            request = new AuditRequest() {
+            request = new AuditRequest()
+            {
                 UniqueIdentifier = new Guid().ToString(),
                 TransactionDateTime = DateTime.UtcNow.AddHours(5),
                 EntityId = entityId,
@@ -91,6 +99,44 @@ namespace JsonAuditor.AcceptanceTests
             var response = await _client.GetAsync($"/Audit?entityId={entityId}&entityType=0&auditTime={request.TransactionDateTime.AddHours(-2)}");
             var output = await response.Content.ReadAsStringAsync();
             Assert.True(output == "{\"something\":\"here\"}");
+        }
+
+        [Fact]
+        public async void ComplexOperations()
+        {
+            string entityId = Guid.NewGuid().ToString();
+
+            AuditRequest request = new AuditRequest()
+            {
+                UniqueIdentifier = new Guid().ToString(),
+                TransactionDateTime = DateTime.UtcNow,
+                EntityId = entityId,
+                EntityType = EntityType.Generic,
+                Entity = "{\"something\":\"here\"}"
+            };
+
+            await UpdateAndCheckOutput(request);
+
+            request = new AuditRequest()
+            {
+                UniqueIdentifier = new Guid().ToString(),
+                TransactionDateTime = DateTime.UtcNow,
+                EntityId = entityId,
+                EntityType = EntityType.Generic,
+                Entity = "{\"something\":\"more\",\"anything\":\"else\",\"additional\":4}"
+            };
+
+            await UpdateAndCheckOutput(request);
+
+            request = new AuditRequest() {
+                UniqueIdentifier = new Guid().ToString(),
+                TransactionDateTime = DateTime.UtcNow,
+                EntityId = entityId,
+                EntityType = EntityType.Generic,
+                Entity = "{\"something\":\"new\"}"
+            };
+
+            await UpdateAndCheckOutput(request);
         }
     }
 }

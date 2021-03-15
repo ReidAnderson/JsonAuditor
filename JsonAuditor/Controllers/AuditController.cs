@@ -63,11 +63,14 @@ namespace JsonAuditor.Controllers
             return Guid.NewGuid();
         }
 
-        private string GetTimeRecord(string entityId, EntityType? entityType, DateTime time) {
+        private string GetTimeRecord(string entityId, EntityType? entityType, DateTime time)
+        {
             List<AuditRecord> result = new List<AuditRecord>();
 
-            foreach(AuditRecord record in GetAuditRecords(entityId, entityType)) {
-                if (record.TransactionTime < time) {
+            foreach (AuditRecord record in GetAuditRecords(entityId, entityType))
+            {
+                if (record.TransactionTime < time)
+                {
                     result.Add(record);
                 }
             }
@@ -177,6 +180,12 @@ namespace JsonAuditor.Controllers
                         result = MapAuditRecord(reader);
                     }
                 }
+            }
+
+            if (result != null)
+            {
+                // TODO this is obviously a concurrency issue. If something comes in between the read above and this call we are in trouble
+                result.Record = GetLatestRecord(entityId, entityType);
             }
 
             return result;
