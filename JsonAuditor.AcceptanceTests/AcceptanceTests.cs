@@ -5,6 +5,8 @@ using System.Net.Http;
 using Microsoft.AspNetCore.Hosting;
 using System.Text.Json;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace JsonAuditor.AcceptanceTests
 {
@@ -20,7 +22,7 @@ namespace JsonAuditor.AcceptanceTests
             _client = _server.CreateClient();
         }
 
-        public async void UpdateAndCheckOutput(AuditRequest newRecord) {
+        public async Task UpdateAndCheckOutput(AuditRequest newRecord) {
             await _client.PostAsJsonAsync("/Audit", newRecord);
 
             var response = await _client.GetAsync($"/Audit?entityId={newRecord.EntityId}&entityType={newRecord.EntityType}");
@@ -28,7 +30,11 @@ namespace JsonAuditor.AcceptanceTests
             Assert.True(response.IsSuccessStatusCode);
 
             string output = await response.Content.ReadAsStringAsync();
-            Assert.True(JsonSerializer.Serialize(JsonSerializer.Deserialize<object>(newRecord.Entity)) == JsonSerializer.Serialize(JsonSerializer.Deserialize<object>(output)));
+
+            string expected = JsonSerializer.Serialize(JsonSerializer.Deserialize<object>(newRecord.Entity));
+            string actual = JsonSerializer.Serialize(JsonSerializer.Deserialize<object>(output));
+
+            Assert.Equal(expected, actual);
         }
 
         [Fact]
@@ -44,7 +50,7 @@ namespace JsonAuditor.AcceptanceTests
                 Entity = "{\"something\":\"here\"}"
             };
 
-            UpdateAndCheckOutput(request);
+            await UpdateAndCheckOutput(request);
 
             request = new AuditRequest() {
                 UniqueIdentifier = new Guid().ToString(),
@@ -54,7 +60,7 @@ namespace JsonAuditor.AcceptanceTests
                 Entity = "{\"something\":\"more\"}"
             };
 
-            UpdateAndCheckOutput(request);
+            await UpdateAndCheckOutput(request);
         }
 
         [Fact]
@@ -70,7 +76,7 @@ namespace JsonAuditor.AcceptanceTests
                 Entity = "{\"something\":\"here\"}"
             };
 
-            UpdateAndCheckOutput(request);
+            await UpdateAndCheckOutput(request);
 
             request = new AuditRequest() {
                 UniqueIdentifier = new Guid().ToString(),
@@ -80,7 +86,7 @@ namespace JsonAuditor.AcceptanceTests
                 Entity = "{\"something\":\"more\",\"anything\":\"else\"}"
             };
 
-            UpdateAndCheckOutput(request);
+            await UpdateAndCheckOutput(request);
 
             var response = await _client.GetAsync($"/Audit?entityId={entityId}&entityType=0&auditTime={request.TransactionDateTime.AddHours(-2)}");
             var output = await response.Content.ReadAsStringAsync();
