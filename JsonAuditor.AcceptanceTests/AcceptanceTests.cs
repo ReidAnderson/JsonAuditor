@@ -20,6 +20,17 @@ namespace JsonAuditor.AcceptanceTests
             _client = _server.CreateClient();
         }
 
+        public async void UpdateAndCheckOutput(AuditRequest newRecord) {
+            await _client.PostAsJsonAsync("/Audit", newRecord);
+
+            var response = await _client.GetAsync($"/Audit?entityId={newRecord.EntityId}&entityType={newRecord.EntityType}");
+            
+            Assert.True(response.IsSuccessStatusCode);
+
+            string output = await response.Content.ReadAsStringAsync();
+            Assert.True(JsonSerializer.Serialize(JsonSerializer.Deserialize<object>(newRecord.Entity)) == JsonSerializer.Serialize(JsonSerializer.Deserialize<object>(output)));
+        }
+
         [Fact]
         public async void RoundTrip()
         {
@@ -33,33 +44,17 @@ namespace JsonAuditor.AcceptanceTests
                 Entity = "{\"something\":\"here\"}"
             };
 
-            await _client.PostAsJsonAsync("/Audit", request);
-
-            var response = await _client.GetAsync($"/Audit?entityId={entityId}&entityType=0");
-            Debug.WriteLine(JsonSerializer.Serialize(response));
-            
-            Assert.True(response.IsSuccessStatusCode);
-
-            string output = await response.Content.ReadAsStringAsync();
-            Assert.True(request.Entity == output);
+            UpdateAndCheckOutput(request);
 
             request = new AuditRequest() {
                 UniqueIdentifier = new Guid().ToString(),
                 TransactionDateTime = DateTime.UtcNow,
                 EntityId = entityId,
                 EntityType = EntityType.Generic,
-                Entity = "{\"something\":\"more\",\"anything\":\"else\"}"
+                Entity = "{\"something\":\"more\"}"
             };
 
-            await _client.PostAsJsonAsync("/Audit", request);
-
-            response = await _client.GetAsync($"/Audit?entityId={entityId}&entityType=0");
-            Debug.WriteLine(JsonSerializer.Serialize(response));
-            
-            Assert.True(response.IsSuccessStatusCode);
-
-            output = await response.Content.ReadAsStringAsync();
-            Assert.True(request.Entity == output);
+            UpdateAndCheckOutput(request);
         }
 
         [Fact]
