@@ -23,7 +23,7 @@ namespace JsonAuditor.AcceptanceTests
             _client = _server.CreateClient();
         }
 
-        public async Task UpdateAndCheckOutput(AuditRequest newRecord)
+        private async Task UpdateAndCheckOutput(AuditRequest newRecord)
         {
             var postResponse = await _client.PostAsJsonAsync("/Audit", newRecord);
 

@@ -26,6 +26,11 @@ namespace JsonAuditor.Controllers
             _logger = logger;
         }
 
+        [HttpGet("all")]
+        public List<AuditRecord> Get(string entityId, EntityType entityType) {
+            return GetAuditRecords(entityId, entityType);
+        }
+
         [HttpGet]
         public string Get(string entityId, EntityType entityType, DateTime? auditTime)
         {
