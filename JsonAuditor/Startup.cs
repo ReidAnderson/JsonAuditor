@@ -17,6 +17,8 @@ namespace JsonAuditor
 {
     public class Startup
     {
+        private readonly object sqliteLock = new object();
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -40,9 +42,9 @@ namespace JsonAuditor
         {
             // if (env.IsDevelopment())
             // {
-                app.UseDeveloperExceptionPage();
-                app.UseSwagger();
-                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "JsonAuditor v1"));
+            app.UseDeveloperExceptionPage();
+            app.UseSwagger();
+            app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "JsonAuditor v1"));
             // }
 
             app.UseHttpsRedirection();
@@ -61,31 +63,32 @@ namespace JsonAuditor
 
         private void ConfigureAndCreateDb()
         {
-
-            bool tableExists = false;
-
-            using (var connection = new SqliteConnection("Data Source=Auditor.db"))
+            lock (sqliteLock)
             {
-                connection.Open();
+                bool tableExists = false;
 
-                var command = connection.CreateCommand();
-                command.CommandText = "SELECT COUNT(name) FROM sqlite_master WHERE type='table' AND name='auditRecords'";
-
-                using (var reader = command.ExecuteReader())
+                using (var connection = new SqliteConnection("Data Source=Auditor.db"))
                 {
-                    if (reader.Read())
+                    connection.Open();
+
+                    var command = connection.CreateCommand();
+                    command.CommandText = "SELECT COUNT(name) FROM sqlite_master WHERE type='table' AND name='auditRecords'";
+
+                    using (var reader = command.ExecuteReader())
                     {
-                        var present = reader.GetString(0);
-                        if (present != "0")
+                        if (reader.Read())
                         {
-                            tableExists = true;
+                            var present = reader.GetString(0);
+                            if (present != "0")
+                            {
+                                tableExists = true;
+                            }
                         }
                     }
-                }
 
-                if (!tableExists)
-                {
-                    string tableSql = @"CREATE TABLE 
+                    if (!tableExists)
+                    {
+                        string tableSql = @"CREATE TABLE 
                     'auditRecords' (
                         'AuditId' STRING,
                         'ParentAuditId' STRING,
@@ -99,13 +102,12 @@ namespace JsonAuditor
                     )
                     ";
 
-                    command = connection.CreateCommand();
-                    command.CommandText = tableSql;
-                    command.ExecuteNonQuery();
+                        command = connection.CreateCommand();
+                        command.CommandText = tableSql;
+                        command.ExecuteNonQuery();
+                    }
                 }
             }
-
-
         }
     }
 }
